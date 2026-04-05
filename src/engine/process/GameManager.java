@@ -18,8 +18,8 @@ public class GameManager {
     // Pourcentages évolutifs
     private double pourcentageBonne = 40;
 
-    private int compteurBonnes = 0;
-    private int compteuractions = 0;
+    private static int compteurBonnes = 0;
+    private static int compteuractions = 0;
     
     private double memoireErreurs = 0;
     private double fatigue = 0;
@@ -41,10 +41,7 @@ public class GameManager {
     public GameManager(GameState gameState){
         this.gameState = gameState;
     }
-    public GameManager(GameState gameState, double propreteInitiale) {
-        this.gameState = gameState;
-        this.scoreProprete = propreteInitiale;
-    }
+
     public void nextRound() {
 
         RoomType piece = choisirPiece();
