@@ -192,7 +192,7 @@ public class ScorePanel extends JPanel {
 
             g2.setFont(new Font("Arial", Font.PLAIN, 11));
             g2.setColor(Color.DARK_GRAY);
-            int nbPoints = pr != null ? pr.size() : 0;
+            int nbPoints = AppConfiguration.NBR_MAX_ACTIONS;           
             for (int i = 0; i <= 4; i++) {
                 int xVal = (int) ((double) i / 4 * nbPoints);
                 int x = MARGIN_LEFT + (int) ((double) i / 4 * graphW);
