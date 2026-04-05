@@ -1,252 +1,237 @@
 package gui;
 
-import javax.swing.*;
-import java.awt.*;
-import java.util.HashMap;
+import javax.swing.JPanel;
+import java.awt.Graphics;
+import java.awt.Graphics2D;
+import java.awt.Color;
+import java.awt.Dimension;
 import java.awt.Image;
-
+import javax.imageio.ImageIO;
+import java.io.File;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.Map;
 import config.AppConfiguration;
 import engine.map.Cell;
 import engine.map.Room;
+import engine.statique.Objet;
 import engine.mobile.Animal;
-import engine.mobile.Maitre;
-import engine.strategy.PunitionRecompenseType;
+import gui.animation.GestionAnimations;
+import engine.map.*;
 
 public class RoomView extends JPanel {
-
     private static final long serialVersionUID = 1L;
     private Room room;
     private Animal animal;
-    private Maitre master;
-    private Cell cible;
-    private String imgname;
-    private boolean arriver = false;
-    private int animationFrames = 0;
-    private boolean lance = true;
-
-    // Gestion punition
-    private PunitionRecompenseType punition = null;
-    private int punitionFrames = AppConfiguration.ANIMATION_DURATION;
-    private Cell positionInitialeMaitre;
-
-    // Cache images
-    private static HashMap<String, Image> imageCache = new HashMap<>();
-
-    public RoomView(Room room, Animal animal, Maitre master) {
+    private GestionAnimations gestionAnimations;
+    
+    // Cache des images
+    private HashMap<String, Image> imageCache = new HashMap<String, Image>();
+    
+    // Images temporaires qui REMPLACENT l'image de l'objet
+    private HashMap<Cell, String> imagesTemporaires = new HashMap<Cell, String>();
+    
+    // Overlays = images qui se SUPERPOSENT (pipi, ordures)
+    private HashMap<Cell, String> overlays = new HashMap<Cell, String>();
+    
+    // Compteurs pour restauration/suppression automatique
+    private HashMap<Cell, Integer> compteursRestauration = new HashMap<Cell, Integer>();
+    private HashMap<Cell, Integer> compteursSuppression = new HashMap<Cell, Integer>();
+    
+    public RoomView(Room room, Animal animal, GestionAnimations gestionAnimations) {
         this.room = room;
         this.animal = animal;
-        this.master = master;
-        this.positionInitialeMaitre = master.getPosition(); // mémoriser position initiale
+        this.gestionAnimations = gestionAnimations;
+        
         setPreferredSize(new Dimension(
-            room.getCells()[0].length * AppConfiguration.CELL_SIZE,
-            room.getCells().length * AppConfiguration.CELL_SIZE
+            room.getColumnCount() * AppConfiguration.CELL_SIZE,
+            room.getLineCount() * AppConfiguration.CELL_SIZE
         ));
     }
-
+    
     @Override
-    public void paintComponent(Graphics g) {
+    protected void paintComponent(Graphics g) {
         super.paintComponent(g);
+        Graphics2D g2 = (Graphics2D) g;
         int size = AppConfiguration.CELL_SIZE;
         
+        // Dessiner la pièce
+        dessinerPiece(g2, size);
         
-        // Dessiner la grille
+        // Dessiner l'animal
+        dessinerAnimal(g2, size);
+        
+        // Gérer les compteurs
+        mettreAJourCompteurs();
+    }
+    
+    private void dessinerPiece(Graphics2D g2, int size) {
         for (Cell[] line : room.getCells()) {
             for (Cell cell : line) {
-                // Couleur selon type pièce
-                Color col;
-                switch (cell.getRoomType()) {
-                    case SALON: col = AppConfiguration.SALON_COL; break;
-                    case CUISINE: col = AppConfiguration.CUISINE_COL; break;
-                    case CHAMBRE: col = AppConfiguration.CHAMBRE_COL; break;
-                    case JARDIN: col = AppConfiguration.JARDIN_COL; break;
-                    default: col = Color.GRAY; break;
-                }
-                g.setColor(col);
-                g.fillRect(cell.getColumn() * size, cell.getLine() * size, size, size);
+                Objet obj = cell.getObject();
                 
-                // Dessiner objets
-                Image img = null;
-                if (cible != null && cible.getLine() == cell.getLine() &&
-                    cible.getColumn() == cell.getColumn() && arriver && animationFrames > 0) {
-                    img = getCachedImage(imgname);
-                } else if (cell.getObject() != null) {
-                    img = getCachedImage(cell.getObject().getName());
+                // Fond beige
+                Zone zone = room.getZone(cell);
+                if (obj == null) {
+                    if (zone == Zone.JARDIN)  g2.setColor(new Color(200,230,200));
+                    else if (zone == Zone.CUISINE) g2.setColor(new Color(255,210,210));
+                    else if (zone == Zone.SALON)   g2.setColor(new Color(255,245,200));
+                    else g2.setColor(new Color(225,200,240));
+                } else {
+                    if (zone == Zone.JARDIN)  g2.setColor(new Color(170,210,170));
+                    else if (zone == Zone.CUISINE) g2.setColor(new Color(240,180,180));
+                    else if (zone == Zone.SALON)   g2.setColor(new Color(240,225,160));
+                    else g2.setColor(new Color(205,175,225));
                 }
+                g2.fillRect(cell.getColumn() * size, cell.getLine() * size, size, size);
 
-                if (img != null) {
-                    g.drawImage(img, cell.getColumn() * size, cell.getLine() * size, size, size, null);
+                
+                // Image de l'objet
+                String nomImage = null;
+                
+                // Si image temporaire existe → on l'utilise
+                if (imagesTemporaires.containsKey(cell)) {
+                    nomImage = imagesTemporaires.get(cell);
+                } 
+                // Sinon, image normale de l'objet
+                else if (obj != null) {
+                    nomImage = obj.getName();
                 }
-
-                g.setColor(Color.black);
-                g.drawRect(cell.getColumn() * size, cell.getLine() * size, size, size);
+                
+                // Dessiner l'image
+                if (nomImage != null) {
+                    Image img = chargerImage(nomImage);
+                    if (img != null) {
+                        g2.drawImage(img, cell.getColumn() * size, cell.getLine() * size, size, size, null);
+                    }
+                }
+                
+                // Overlay par-dessus (pipi, ordures)
+                if (overlays.containsKey(cell)) {
+                    Image overlay = chargerImage(overlays.get(cell));
+                    if (overlay != null) {
+                        g2.drawImage(overlay, cell.getColumn() * size, cell.getLine() * size, size, size, null);
+                    }
+                }
+                
+                // Grille
+                g2.setColor(new Color(200, 200, 200, 100));
+                g2.drawRect(cell.getColumn() * size, cell.getLine() * size, size, size);
             }
         }
-     
-
-        //  Bordure
-        Graphics2D g2 = (Graphics2D) g;
-        g2.setColor(Color.DARK_GRAY);
-        g2.setStroke(new BasicStroke(4));
-        int mid = AppConfiguration.LINE_COUNT / 2 * size;
-        int midCol = AppConfiguration.COLUMN_COUNT / 2 * size;
-        g2.drawLine(midCol, 0, midCol, AppConfiguration.LINE_COUNT * size);
-        g2.drawLine(0, mid, AppConfiguration.COLUMN_COUNT * size, mid);
-        g2.setStroke(new BasicStroke(1)); // reset
-
-        //  Noms des pièces
-        g2.setFont(new Font("Arial", Font.BOLD, 18));
-        g2.setColor(new Color(0, 0, 0, 80));
-        g2.drawString("Salon",   20, mid / 2);
-        g2.drawString("Chambre", midCol + 20, mid / 2);
-        g2.drawString("Jardin",  20, mid + mid / 2);
-        g2.drawString("Cuisine", midCol + 20, mid + mid / 2);
-       
-        dessinerAnimal(g, size);
-     // Décrémenter animation
-        System.out.println(animationFrames);
-        if (animationFrames > 0) {
-            animationFrames--;
-            if (animationFrames == 0) {
-                cible = null;
-                arriver = false;
-            }
-        }
-
-        dessinerMaster(g,  size);
+    }
+    
+    private void dessinerAnimal(Graphics2D g2, int size) {
+        Cell position = animal.getPosition();
+        Image animalImg = chargerImage(animal.getType());
 
         
+        if (animalImg != null) {
+            g2.drawImage(animalImg, position.getColumn() * size, position.getLine() * size, size, size, null);
+        } else {
+            // Cercle bleu si pas d'image
+            g2.setColor(Color.BLUE);
+            g2.fillOval(position.getColumn() * size, position.getLine() * size, size, size);
+        }
     }
+    
+    private void mettreAJourCompteurs() {
 
-    private void dessinerAnimal(Graphics g, int size) {
-        if (animal == null) return;
-        int line = animal.getPosition().getLine();
-        int col = animal.getPosition().getColumn();
+        // Restauration des images
+        Iterator<Cell> itRestauration = new ArrayList<>(compteursRestauration.keySet()).iterator();
+        while (itRestauration.hasNext()) {
+            Cell cell = itRestauration.next();
+            int compteur = compteursRestauration.get(cell) - 1;
 
-        // Si punition active → on ne bouge pas l’animal
-        if (punition == null) {
-            if (cible != null) {
-                int cl = cible.getLine();
-                int cc = cible.getColumn();
-
-                if (cl == line && cc == col) {
-                    if (!arriver) {
-                        arriver = true;
-                        animationFrames = AppConfiguration.ANIMATION_DURATION;
-                    }
-                } else {
-                    if (line > cl) line--;
-                    else if (line < cl) line++;
-
-                    if (col > cc) col--;
-                    else if (col < cc) col++;
-
-                    animal.moveTo(room.getCells()[line][col]);
-                }
+            if (compteur <= 0) {
+                imagesTemporaires.remove(cell);
+                compteursRestauration.remove(cell);
+            } else {
+                compteursRestauration.put(cell, compteur);
             }
         }
 
-        // on dessine TOUJOURS l’animal
-        Image img = getCachedImage(animal.getType().toString());
-        if (img != null) g.drawImage(img, col * size, line * size, size, size, null);
-    }
+        // Suppression des overlays
+        Iterator<Cell> itSuppression = new ArrayList<>(compteursSuppression.keySet()).iterator();
+        while (itSuppression.hasNext()) {
+            Cell cell = itSuppression.next();
+            int compteur = compteursSuppression.get(cell) - 1;
 
-    private void dessinerMaster(Graphics g, int size) {
-        if (master== null) return;
-
-        String imageName = "maitre";
-
-        if (punition != null && punitionFrames > 0 ) {
-            switch (punition) {
-            
-                case DIRE_STOP:
-                    imageName = "maitre_stop"; // image "stop"
-                    break;
-                case REPRIMANDE:
-                    imageName = "maitre_fache"; // image "fâché"
-                    break;
-                case FRAPPER:
-                    imageName = "maitre_baton"; // image avec baton
-                    master.deplacerVersAnimal(animal);
-                    break;
-                case ENCOURAGER:
-                    imageName = "maitre_bravo"; // image "Bravo"
-                    break;
-                case CARESSER:
-                    imageName = "maitrecaresse"; // image avec baton
-                    master.deplacerVersAnimal(animal);
-                    break;
-            }
-
-            // Décrémenter punitionFrames
-            punitionFrames--;
-            if (punitionFrames == 0) {
-                punition = null;
-                lance = true;
-                master.setPosition(positionInitialeMaitre); // retour position initiale
+            if (compteur <= 0) {
+                overlays.remove(cell);
+                compteursSuppression.remove(cell);
+            } else {
+                compteursSuppression.put(cell, compteur);
             }
         }
-
-        Image img = getCachedImage(imageName);
-        g.drawImage(img, master.getPosition().getColumn() * size, master.getPosition().getLine() * size, size, size, null);
     }
 
-    // Méthode pour récupérer l’image avec cache
-    public static Image getCachedImage(String nom) {
-        String key = nom.toLowerCase().trim();
-        if (imageCache.containsKey(key)) return imageCache.get(key);
+    
+    // ========== MÉTHODES PUBLIQUES ==========
+    
+    /**
+     * Change l'image d'une cellule (REMPLACE l'image de l'objet)
+     * Ex: vase → vase_casse
+     */
+    public void changerImage(Cell cell, String nouvelleImage) {
+        imagesTemporaires.put(cell, nouvelleImage);
+    }
+    
+    /**
+     * Restaure l'image originale de la cellule après X frames
+     * Si frames = 0, restauration immédiate
+     */
+    public void restaurerImageApres(Cell cell, int frames) {
+        if (frames <= 0) {
+            imagesTemporaires.remove(cell);
+        } else {
+            compteursRestauration.put(cell, frames);
+        }
+    }
+    
+    /**
+     * Ajoute un overlay (image par-dessus)
+     * Ex: pipi, ordures
+     */
+    public void ajouterOverlay(Cell cell, String nomOverlay) {
+        overlays.put(cell, nomOverlay);
+    }
+    
+    /**
+     * Retire un overlay après X frames
+     */
+    public void retirerOverlayApres(Cell cell, int frames) {
+        if (frames <= 0) {
+            overlays.remove(cell);
+        } else {
+            compteursSuppression.put(cell, frames);
+        }
+    }
+    
+    // ========== CHARGEMENT D'IMAGES ==========
+    
+    private Image chargerImage(String nom) {
+    	
+        String key = nom.toLowerCase();
+        
+        if (imageCache.containsKey(key)) {
+            return imageCache.get(key);
+        }
+        
         try {
-            Image img = javax.imageio.ImageIO.read(RoomView.class.getResource("/images/" + key + ".png"));
-            if (img != null) imageCache.put(key, img);
+            Image img = ImageIO.read(new File("src/images/" + key + ".png"));
+            imageCache.put(key, img);
             return img;
-        } catch (Exception e) {
-            System.err.println("Impossible de charger l'image : " + key);
+        } catch (IOException e) {
             return null;
         }
     }
-
-    // Set la cellule cible et image pour l’animation
-    public void setCibleImg(Cell c, String n) {
-        cible = c;
-        imgname = n;
+    
+    
+    public void setGestionAnimations(GestionAnimations gestionAnimations) {
+        this.gestionAnimations = gestionAnimations;
     }
 
-    // Définir punition
-    public void setPunition(PunitionRecompenseType p) {
-        this.punition = p;
-        lance = false;
-        punitionFrames =AppConfiguration.ANIMATION_DURATION;
-    }
-
-    // Reset complet du jeu
-    public void resetGameData(Room r, Animal a, Maitre m) {
-        this.room = r;
-        this.animal = a;
-        this.master = m;
-        this.positionInitialeMaitre = m.getPosition();
-
-        cible = null;
-        arriver = false;
-        animationFrames = 0;
-        punition = null;
-        punitionFrames = 0;
-        lance = true;
-    }
-
-    public boolean isArrived() { 
-    	return cible == null; 
-    	}
-    public boolean animationTerminee() {
-        return cible == null && animationFrames == 0;
-    }
-    public boolean punitionTermine() {
-        return lance;
-    }
-    public PunitionRecompenseType getPunition() {
-    	return punition ;
-    }
-
-	public void setLance(boolean b) {
-		lance=b;
-		
-	}
 }
