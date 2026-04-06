@@ -73,15 +73,23 @@ public class MainGUI extends JFrame implements Runnable {
         roomView.setPreferredSize(gridSize);
         //  Panel droit (compétences + infos)
         rightPanel = new RightPanel();
+        gameManager.setRightPanel(rightPanel);
         rightPanel.setPreferredSize(new Dimension(400, gridSize.height));
         
         rightPanel.updateData(
-    	        gameManager.getBonnesAct(),
-    	        0,
-    	        gameManager.getScoreProprete(),
-    	        0,
-    	        0
-    	    );
+        	    gameManager.getBonnesAct(),
+        	    gameManager.getActions(),
+        	    gameManager.getScoreProprete(),
+        	    gameManager.getScoreDiscipline(),
+        	    gameManager.getScoreObeissance(),
+        	    1.15, 0.8,
+        	    1.12, 0.6,
+        	    1.18, 1.0,
+        	    Math.sqrt(gameManager.getActions()),
+        	    0,
+        	    true,
+        	    0
+        	);
 
         contentPane.add(roomView, BorderLayout.CENTER);
         contentPane.add(rightPanel, BorderLayout.EAST);
@@ -126,13 +134,20 @@ public class MainGUI extends JFrame implements Runnable {
     	        gameManager.getImgname()
     	    );
 
-    	    rightPanel.updateData(
-    	        gameManager.getBonnesAct(),
-    	        gameManager.getActions(),
-    	        gameManager.getScoreProprete(),
-    	        gameManager.getScoreDiscipline(),
-    	        gameManager.getScoreObeissance()
-    	    );
+    	       rightPanel.updateData(
+    	    		    gameManager.getBonnesAct(),
+    	    		    gameManager.getActions(),
+    	    		    gameManager.getScoreProprete(),
+    	    		    gameManager.getScoreDiscipline(),
+    	    		    gameManager.getScoreObeissance(),
+    	    		    1.15, 0.8,
+    	    		    1.12, 0.6,
+    	    		    1.18, 1.0,
+    	    		    Math.sqrt(gameManager.getActions()),
+    	    		    0,
+    	    		    true,
+    	    		    0
+    	    		);
     	    rightPanel.addMessage(gameManager.getMessage());
     		}
     		histProprete.add(gameManager.getScoreProprete());
@@ -184,7 +199,7 @@ public class MainGUI extends JFrame implements Runnable {
         );
         rightPanel.clearLog();
 
-        rightPanel.updateData(40, 0, gameManager.getScoreProprete(), 0, 0);
+        
 
         repaint();
     }
@@ -204,7 +219,9 @@ public class MainGUI extends JFrame implements Runnable {
             animaltype
         );
     }
-	
+    public RightPanel getRightPanel() {
+		return rightPanel;
+	}
     
     
 }

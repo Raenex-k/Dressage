@@ -1,6 +1,7 @@
 package engine.process;
 
 import java.util.Random;
+import gui.RightPanel;
 import java.lang.String;
 
 
@@ -14,6 +15,7 @@ public class GameManager {
 
     public GameState gameState;
     private Random random = new Random();
+    private RightPanel rightPanel;
 
     // Pourcentages évolutifs
     private double pourcentageBonne = 40;
@@ -45,6 +47,9 @@ public class GameManager {
         this.gameState = gameState;
         this.scoreProprete = propreteInitiale;
     }
+    public void setRightPanel(RightPanel panel) {
+        this.rightPanel = panel;
+    }
     public void nextRound() {
 
         RoomType piece = choisirPiece();
@@ -55,6 +60,7 @@ public class GameManager {
         updateCompteur(actionBonne);
         ajusterPourcentages();
         calculerCompetences();
+        
 
     }
 
