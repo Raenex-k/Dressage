@@ -21,7 +21,7 @@ public abstract class Animal {
         this.type = type;
         this.proprete = new Skill(SkillTypes.Proprete);
         this.discipline = new Skill(SkillTypes.Discipline);
-        this.obeissance = new Skill(SkillTypes.Discipline);
+        this.obeissance = new Skill(SkillTypes.Obeissance);
     }
 
     public void moveTo(Cell cell){

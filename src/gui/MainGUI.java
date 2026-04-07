@@ -73,7 +73,6 @@ public class MainGUI extends JFrame implements Runnable {
         roomView.setPreferredSize(gridSize);
         //  Panel droit (compétences + infos)
         rightPanel = new RightPanel();
-        gameManager.setRightPanel(rightPanel);
         rightPanel.setPreferredSize(new Dimension(400, gridSize.height));
         
         rightPanel.updateData(

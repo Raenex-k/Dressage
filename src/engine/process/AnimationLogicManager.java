@@ -150,7 +150,7 @@ public class AnimationLogicManager {
         if(actionBonne){
 
 
-            int choix = random.nextInt(3);
+            int choix = random.nextInt(4);
 
             switch(choix){
 
@@ -414,8 +414,8 @@ public class AnimationLogicManager {
 
             setPunitionRecompense(null);
 
-            int choix=random.nextInt(3);
-
+            int choix = random.nextInt(2);
+            
             switch(choix){
 
                 case 0:
