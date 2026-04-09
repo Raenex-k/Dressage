@@ -1,6 +1,7 @@
 package gui;
 
 import java.awt.BorderLayout;
+
 import java.awt.Container;
 import java.awt.Dimension;
 import java.util.ArrayList;
@@ -16,6 +17,9 @@ import engine.mobile.Maitre;
 import engine.process.GameBuilder;
 import engine.process.GameManager;
 import engine.process.GameState;
+
+import org.apache.log4j.Logger;
+import log.LoggerUtility;
 
 public class MainGUI extends JFrame implements Runnable {
 
@@ -34,6 +38,9 @@ public class MainGUI extends JFrame implements Runnable {
     private List<Double> histProprete   = new ArrayList<>();
     private List<Double> histDiscipline = new ArrayList<>();
     private List<Double> histObeissance = new ArrayList<>();
+    
+    private static Logger logger = LoggerUtility.getLogger(MenuGUI.class, "html");
+
     
     private final static Dimension gridSize = new Dimension(
                     AppConfiguration.COLUMN_COUNT * AppConfiguration.CELL_SIZE,

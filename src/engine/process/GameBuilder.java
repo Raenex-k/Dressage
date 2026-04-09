@@ -6,38 +6,40 @@ import engine.object.salon.*;
 import engine.object.cuisine.*;
 import engine.object.chambre.*;
 import engine.object.jardin.*;
+import org.apache.log4j.Logger;
+import log.LoggerUtility;
 
 import java.util.Random;
 
 import config.AppConfiguration;
 
 public class GameBuilder {
-	
+
+	private static Logger logger = LoggerUtility.getLogger(GameBuilder.class, "html");
+
 	public static Room buildRoom() {
+		logger.info("Creation de la Room " + AppConfiguration.LINE_COUNT + "x" + AppConfiguration.COLUMN_COUNT);
 	    return new Room(
 	        AppConfiguration.LINE_COUNT,
 	        AppConfiguration.COLUMN_COUNT
 	    );
 	}
-	
-	public static void buildObjects(Room room , AnimalType type) {
+
+	public static void buildObjects(Room room, AnimalType type) {
+		logger.info("Creation des objets pour type animal : " + type);
 		 Random random = new Random();
 	        int middleligne = AppConfiguration.LINE_COUNT / 2;
 	        int middlecolumn = AppConfiguration.COLUMN_COUNT / 2;
-	        	        
 
 	        for (int i = 0; i < AppConfiguration.LINE_COUNT; i++) {
 	            for (int j = 0; j < AppConfiguration.COLUMN_COUNT; j++) {
 
 	                Cell cell = room.getCells()[i][j];
-	                
-	                
-	                if (!( (i == 0 && j == 0) || (i == middleligne && j == middlecolumn) )) { 
-	                
-	                // SALON
+
+	                if (!( (i == 0 && j == 0) || (i == middleligne && j == middlecolumn) )) {
+
 	                if (i < middleligne && j < middlecolumn) {
 	                    int r = random.nextInt(24);
-
 	                    switch (r) {
 	                    case 0:
 	                        room.addObject(new Canape(cell));
@@ -51,7 +53,7 @@ public class GameBuilder {
 	                    case 6:
 	                        room.addObject(new Tapis(cell));
 	                        break;
-	                    case 8:	
+	                    case 8:
 	                    	if(type == AnimalType.CHAT) {
 	                        room.addObject(new Balle(cell));}
 	                    	else {
@@ -61,10 +63,8 @@ public class GameBuilder {
 	                }
 	                }
 
-	                // CHAMBRE
 	                else if (i < middleligne && j >= middlecolumn) {
 	                	int r = random.nextInt(14);
-
 	                	switch (r) {
 	                    case 0:
 	                        room.addObject(new Lit(cell));
@@ -81,21 +81,15 @@ public class GameBuilder {
 	                    case 6:
 	                    	room.addObject(new Lampe(cell));
 	                        break;
-	                    
 	                }
 	                }
 
-	             // JARDIN
 	                else if (i >= middleligne && j < middlecolumn) {
-
-	                    // Dernière ligne → barrière automatique
 	                    if (i == AppConfiguration.LINE_COUNT - 1) {
-	                    	
 	                        room.addObject(new Barriere(cell));
-	                    } 
+	                    }
 	                    else {
 	                        int r = random.nextInt(12);
-
 	                        switch (r) {
 	                        case 0:
 	                            room.addObject(new Arbre(cell));
@@ -115,7 +109,6 @@ public class GameBuilder {
 	                        }
 	                    }
 
-	                // CUISINE
 	                else {
 	                	int r = random.nextInt(24);
 	                	switch (r) {
@@ -133,41 +126,41 @@ public class GameBuilder {
 	                        room.addObject(new Refrigerateur(cell));
 	                        break;
 	                    case 6:
-	                    		room.addObject(new Placard(cell));	                    	
+	                    		room.addObject(new Placard(cell));
 	                        break;
 	                    case 8:
 	                        room.addObject(new TableManger(cell));
 	                        break;
 	                }
-	                    
 	                }
 	                }
 	            }
 	            }
+	        logger.info("Objets places dans la Room");
 	        }
-	
-	
 
 	public static Animal buildAnimal(Room room, AnimalType type, String nom) {
+		logger.info("Creation animal : " + nom + " de type " + type);
 	    Cell startCell = room.getCells()[0][0];
 	    Animal animal = AnimalFactory.create(type, nom, startCell);
-	  //Si l'animal choisi est un chat alors on commence à une proprete de 20 
 	    if (type == AnimalType.CHAT) {
-	        animal.getProprete().increase(20); 
+	        animal.getProprete().increase(20);
+	        logger.info("Proprete initiale du Chat fixee a 20");
 	    }
-	    
 	    return animal;
 	}
+
 	public static GameManager buildGameManager(GameState gameState, AnimalType type) {
 	    double propreteInitiale = (type == AnimalType.CHAT) ? 20 : 0;
+	    logger.info("Creation GameManager avec proprete initiale : " + propreteInitiale);
 	    return new GameManager(gameState, propreteInitiale);
 	}
-	public static Maitre buildMaitre(Room room) {
 
+	public static Maitre buildMaitre(Room room) {
+		logger.info("Creation du Maitre au centre de la Room");
 	    return new Maitre(
 	        room.getCells()[AppConfiguration.LINE_COUNT / 2]
 	                        [AppConfiguration.COLUMN_COUNT / 2]
 	    );
 	}
-    
 }
