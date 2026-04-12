@@ -23,12 +23,15 @@ public class GameManager {
     
     private double memoireErreurs = 0;
     private double fatigue = 0;
-    private  String message;
+    private  String message="";
 
     private double scoreProprete = 0;
     private double scoreDiscipline = 0;
     private double scoreObeissance = 0;
 
+    private LearningStrategy learningStrategy;
+    private SkillEvolutionStrategy skillStrategy;
+    
     private Cell cible = null;
     private String imgname = null;
 
@@ -41,6 +44,8 @@ public class GameManager {
     public GameManager(GameState gameState, double propreteInitiale) {
         this.gameState = gameState;
         this.scoreProprete = propreteInitiale;
+        learningStrategy = new DefaultLearningStrategy();
+        skillStrategy = new DefaultSkillStrategy();
     }
   
     public void nextRound() {
@@ -51,9 +56,20 @@ public class GameManager {
 
         lancerAnimation(piece, actionBonne);
         updateCompteur(actionBonne);
+        int deg = animation.getDegPunition();
+
+	     // mise à jour mémoire
+	     memoireErreurs += (-deg) * 0.25;
+	     memoireErreurs = Math.max(0, Math.min(30, memoireErreurs));
+	
+	     // fatigue
+	     fatigue = Math.sqrt(compteuractions)/4;
         ajusterPourcentages();
         calculerCompetences();
         
+        if (animation != null) {
+            updateMessage();
+        }
 
     }
 
@@ -67,56 +83,17 @@ public class GameManager {
     }
     
     private void ajusterPourcentages(){
-
-        int deg = animation.getDegPunition();
-
-        // ---------------- MEMOIRE COMPORTEMENTALE ----------------
-        // Les erreurs augmentent la mémoire, mais elle est bornée
-        memoireErreurs += (-deg) * 0.25;
-        memoireErreurs = Math.max(0, Math.min(30, memoireErreurs));
-
-        // ---------------- FATIGUE ----------------
-        fatigue = Math.sqrt(compteuractions);
-
-        // ---------------- APPRENTISSAGE ----------------
-        double apprentissage = Math.log(1 + memoireErreurs);
-
-        if(deg >= 0){
-            apprentissage *= 3;  // récompense plus efficace
-        }
-        else if(deg < 0){
-            apprentissage *= -0.6; // punition moins efficace
-        }
-
-        // ---------------- FATIGUE EFFET ----------------
-        double effetFatigue = fatigue * 0.08;
-
-        // ---------------- DELTA FINAL ----------------
-        double delta = apprentissage - effetFatigue;
-
-        // ---------------- BRUIT COMPORTEMENTAL ----------------
-        double bruit = random.nextGaussian() * 0.3;
-
-        // ---------------- MISE A JOUR ----------------
-        pourcentageBonne += delta + bruit;
-
-        // ---------------- BONUS DE SERIE ----------------
-        if(compteurBonnes > AppConfiguration.SEUIL_BONNES_ACTIONS){
-
-            double bonus = Math.sqrt(compteurBonnes) * 0.01;
-            pourcentageBonne += bonus;
-
-            compteurBonnes = 0;
-        }
-
-        // ---------------- APPRENTISSAGE PASSIF ----------------
-        // même sans récompense l'animal apprend un peu
-        pourcentageBonne +=(scoreProprete +scoreDiscipline+scoreObeissance)/400 ;
-
-        // ---------------- LIMITES ----------------
-        pourcentageBonne = Math.max(10, Math.min(95, pourcentageBonne));
-
-        System.out.println("********* pourcentage Bonne: " + pourcentageBonne);
+    	pourcentageBonne = learningStrategy.updatePourcentage(
+    		    pourcentageBonne,
+    		    animation.getDegPunition(),
+    		    memoireErreurs,
+    		    fatigue,
+    		    compteurBonnes,
+    		    scoreProprete,
+    		    scoreDiscipline,
+    		    scoreObeissance
+    		);
+    	pourcentageBonne = Math.max(10, Math.min(95, pourcentageBonne));
     }
 
     private void lancerAnimation(RoomType piece, boolean actionBonne){
@@ -130,48 +107,42 @@ public class GameManager {
 
     private void calculerCompetences() {
 
-        int impactPr = animation.getPr();
-        int impactDs = animation.getDs();
-        int impactOb = animation.getOb();
+    	double[] gains = skillStrategy.compute(
+    		    scoreProprete,
+    		    scoreDiscipline,
+    		    scoreObeissance,
+    		    animation.getPr(),
+    		    animation.getDs(),
+    		    animation.getOb(),
+    		    animation.getDegPunition()
+    		);
+    	
+
+    		scoreProprete += gains[0];
+    		scoreDiscipline += gains[1];
+    		scoreObeissance += gains[2];
+    		
+    		scoreProprete = Math.max(0, Math.min(100, scoreProprete));
+    		scoreDiscipline = Math.max(0, Math.min(100, scoreDiscipline));
+    		scoreObeissance = Math.max(0, Math.min(100, scoreObeissance));
+    }
+    
+    
+    private void updateMessage() {
 
         int deg = animation.getDegPunition();
 
-        double diffPr = 1 - Math.pow(scoreProprete*2/300.0,2);
-        double diffDs = 1 - Math.pow(scoreDiscipline*2/300.0,2);
-        double diffOb = 1 - Math.pow(scoreObeissance*2/300.0,2);
-
-        double gainPr = impactPr * diffPr * Math.log(1 + Math.abs(impactPr));
-        double gainDs = impactDs * diffDs * Math.log(1 + Math.abs(impactDs));
-        double gainOb = impactOb * diffOb * Math.log(1 + Math.abs(impactOb));
-
-        double bonusPr = scoreDiscipline * 0.04;
-        double bonusDs = scoreObeissance * 0.08;
-        double bonusOb = scoreProprete * 0.06;
-
-        double fatigueSkill = Math.abs(deg) * 0.4;
-
-        double addP = gainPr + bonusPr - fatigueSkill + random.nextGaussian()*0.25;
-        double addD = gainDs + bonusDs - fatigueSkill + random.nextGaussian()*0.25;
-        double addO = gainOb + bonusOb - fatigueSkill + random.nextGaussian()*0.25;
-        
-        scoreProprete += addP;
-        scoreDiscipline += addD ;
-        scoreObeissance += addO;
-
-        scoreProprete = Math.max(0, Math.min(100, scoreProprete));
-        scoreDiscipline = Math.max(0, Math.min(100, scoreDiscipline));
-        scoreObeissance = Math.max(0, Math.min(100, scoreObeissance));
         String signe = (deg >= 0) ? "Bonne action ✓" : "Mauvaise action ✗";
 
-        this.message = String.format(
-        	    "%s\nDegre de recompense/punition: %+d\nProprete: %+.2f%%\nDiscipline: %+.2f%%\nObeissance: %+.2f%%",
-        	    signe,
-        	    deg,
-        	    addP,
-        	    addD,
-        	    addO
-        	);    }
-    
+        message = String.format(
+            "%s\nDegre de recompense/punition: %+d\nProprete: %.2f\nDiscipline: %.2f\nObeissance: %.2f",
+            signe,
+            deg,
+            scoreProprete,
+            scoreDiscipline,
+            scoreObeissance
+        );
+    }
     
     
     public void reset() {
@@ -204,6 +175,9 @@ public class GameManager {
         scoreDiscipline = 0;
         scoreObeissance = 0;
         
+        memoireErreurs = 0;
+        fatigue = 0;
+        
         cible = null;
         
         animation =null;
@@ -213,6 +187,8 @@ public class GameManager {
         // Reset punition/recompense
         ptype =null;
     }
+    
+
 
     // Getters
     public GameState getGameState() {return gameState;}
@@ -223,6 +199,8 @@ public class GameManager {
     public double getScoreDiscipline() { return scoreDiscipline; }
     public double getScoreObeissance() { return scoreObeissance; }
     public double getBonnesAct() { return pourcentageBonne; }
+    public double getFatigue() { return fatigue; }
+    public double getMemoireErreurs() { return memoireErreurs; }
     public PunitionRecompenseType getPunitionCourante() { return ptype; }
 
 	public int getActions() {	
