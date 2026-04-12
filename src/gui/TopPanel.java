@@ -41,6 +41,11 @@ public class TopPanel extends JPanel {
 
         add(btnPause);
         add(btnReset);
+        
+        JButton btnAccueil = new JButton("Accueil");
+        styleButton(btnAccueil);
+        btnAccueil.addActionListener(new AccueilButtonListener());
+        add(btnAccueil);
     }
     
     
@@ -75,6 +80,16 @@ public class TopPanel extends JPanel {
                 btnPause.setText("Start");
                 mainGUI.stopThread();
             }
+        }
+    }
+    
+    //retour a l'acceuil
+    private class AccueilButtonListener implements ActionListener {
+        @Override
+        public void actionPerformed(ActionEvent e) {
+            mainGUI.stopThread();
+            mainGUI.dispose();
+            new MenuGUI();
         }
     }
 }
