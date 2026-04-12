@@ -6,10 +6,10 @@ import java.awt.Font;
 public class AppConfiguration {
     public static final int WINDOW_WIDTH = 1400;
     public static final int WINDOW_HEIGHT = 1200;
-    public static final int CELL_SIZE = 52;
+    public static final int CELL_SIZE = 48;
     public static final int LINE_COUNT = 16;
     public static final int COLUMN_COUNT = 16 ;
-    public static final int GAME_SPEED =100;
+    public static final int GAME_SPEED =10;
     public static final int ANIMATION_DURATION = 10;
 
     //House colors
@@ -31,7 +31,7 @@ public class AppConfiguration {
     public static final int CHAMBRE_PROB = 15;
     
     // Animations
-    public static final int NBR_MAX_ACTIONS = 10;
+    public static final int NBR_MAX_ACTIONS = 100;
     public static final int DUREE_DEPLACEMENT = 50;
     public static final int DUREE_ACTION = 30;
     public static final int DUREE_ATTENTE = 40; 
